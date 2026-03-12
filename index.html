@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wave Rilla</title>
+  <link rel="stylesheet" href="/styles/main.css" />
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="game-canvas"></canvas>
+    <div id="hud">
+      <div id="hud-speed">
+        <div class="hud-label">SPEED</div>
+        <div id="speed-value">0</div>
+        <div class="hud-unit">km/h</div>
+      </div>
+      <div id="hud-position">
+        <div id="position-value">1</div>
+        <div class="hud-label">/ 6</div>
+      </div>
+      <div id="hud-lap">
+        <div class="hud-label">LAP</div>
+        <div id="lap-value">1 / 3</div>
+      </div>
+      <div id="hud-power">
+        <div class="hud-label">POWER</div>
+        <div id="power-arrows">
+          <span class="power-arrow"></span>
+          <span class="power-arrow"></span>
+          <span class="power-arrow"></span>
+          <span class="power-arrow"></span>
+          <span class="power-arrow"></span>
+        </div>
+      </div>
+      <div id="hud-minimap">
+        <canvas id="minimap-canvas" width="160" height="160"></canvas>
+      </div>
+    </div>
+    <div id="countdown-overlay"></div>
+    <div id="results-overlay" class="hidden">
+      <div id="results-content">
+        <img src="/src/brand/race-complete.png" alt="Race Complete!" id="race-complete-logo" />
+        <div id="results-list"></div>
+        <button id="restart-btn">BACK TO TRACKS</button>
+      </div>
+    </div>
+    <div id="start-overlay">
+      <div id="start-content">
+        <img src="/src/brand/rilla.png" alt="Wave Rilla" id="game-logo" />
+        <p class="select-prompt">Select a Track</p>
+        <div id="track-select">
+          <div class="track-card" data-track-index="0">
+            <canvas class="track-preview" width="80" height="80"></canvas>
+            <div class="track-info">
+              <div class="track-name">Tropical Loop</div>
+              <span class="difficulty-badge easy">Easy</span>
+            </div>
+          </div>
+          <div class="track-card" data-track-index="1">
+            <canvas class="track-preview" width="80" height="80"></canvas>
+            <div class="track-info">
+              <div class="track-name">Shark Bay</div>
+              <span class="difficulty-badge medium">Medium</span>
+            </div>
+          </div>
+          <div class="track-card" data-track-index="2">
+            <canvas class="track-preview" width="80" height="80"></canvas>
+            <div class="track-info">
+              <div class="track-name">Typhoon Run</div>
+              <span class="difficulty-badge hard">Hard</span>
+            </div>
+          </div>
+          <div class="track-card" data-track-index="3">
+            <canvas class="track-preview" width="80" height="80"></canvas>
+            <div class="track-info">
+              <div class="track-name">Dragon's Wake</div>
+              <span class="difficulty-badge expert">Expert</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
