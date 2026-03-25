@@ -1,0 +1,21 @@
+{
+  "name": "Wave Rilla",
+  "short_name": "Wave Rilla",
+  "description": "Ride the waves like a beast! A 3D jet ski racing game.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#000014",
+  "theme_color": "#000014",
+  "icons": [
+    {
+      "src": "src/brand/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "src/brand/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
