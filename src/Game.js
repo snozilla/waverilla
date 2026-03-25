@@ -155,6 +155,20 @@ export class Game {
     this.hud.restartBtn.addEventListener('click', () => {
       this.backToLevelSelect();
     });
+
+    // Credits
+    const creditsBtn = document.getElementById('credits-btn');
+    const creditsOverlay = document.getElementById('credits-overlay');
+    const creditsCloseBtn = document.getElementById('credits-close-btn');
+    if (creditsBtn && creditsOverlay && creditsCloseBtn) {
+      creditsBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        creditsOverlay.classList.remove('hidden');
+      });
+      creditsCloseBtn.addEventListener('click', () => {
+        creditsOverlay.classList.add('hidden');
+      });
+    }
   }
 
   setupRaceCallbacks() {
