@@ -229,13 +229,21 @@ export class JetSki {
   }
 
   activatePickup(type, duration) {
+    // If switching from giant to non-giant, shrink back first
+    if (this.activePickup === 'giant' && type !== 'giant') {
+      this.mesh.scale.setScalar(this.originalScale || 1);
+    }
+
     this.activePickup = type;
     this.pickupTimer = duration;
     this.pickupMaxDuration = duration;
     this.laserTarget = null;
 
     if (type === 'giant') {
-      this.originalScale = this.mesh.scale.x;
+      // Only save original scale if not already giant
+      if (this.mesh.scale.x < 1.5) {
+        this.originalScale = this.mesh.scale.x;
+      }
       this.mesh.scale.setScalar(2);
     }
   }
@@ -252,6 +260,7 @@ export class JetSki {
       this.pickupTimer = 0;
       this.pickupMaxDuration = 0;
       this.laserTarget = null;
+      this.originalScale = null;
     }
   }
 
