@@ -56,21 +56,20 @@ export class AudioManager {
     if (!this.skipIntro) this.playIntro();
   }
 
-  // Play a silent MP3 via HTML Audio to unlock iOS audio session
+  // Play a looping silent MP3 via HTML Audio to keep iOS audio session alive
   // This defeats the silent/ringer switch — crucial for iPhone
+  // Must keep playing for the entire session or iOS kills the audio
   _unlockiOSAudioSession() {
     if (this._iosUnlocked) return;
     try {
-      const audio = new Audio('src/audio/silence.mp3');
-      audio.volume = 0.01;
-      audio.playsInline = true;
-      const p = audio.play();
+      this._keepAliveAudio = new Audio('src/audio/silence.mp3');
+      this._keepAliveAudio.loop = true;
+      this._keepAliveAudio.volume = 0.01;
+      this._keepAliveAudio.playsInline = true;
+      this._keepAliveAudio.setAttribute('playsinline', '');
+      const p = this._keepAliveAudio.play();
       if (p && p.then) {
-        p.then(() => {
-          this._iosUnlocked = true;
-          // Clean up after short play
-          setTimeout(() => { audio.pause(); audio.remove?.(); }, 600);
-        }).catch(() => {});
+        p.then(() => { this._iosUnlocked = true; }).catch(() => {});
       }
     } catch (e) {}
   }
