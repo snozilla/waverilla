@@ -509,7 +509,7 @@ html, body {
   background: rgba(0,0,20,0.85);
   backdrop-filter: blur(12px);
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
   z-index: 20;
   overflow-y: auto;
