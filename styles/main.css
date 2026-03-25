@@ -711,16 +711,11 @@ body {
   bottom: 16px;
   right: 12px;
   display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 10px;
   pointer-events: all;
   touch-action: none;
-}
-
-#touch-buttons-col-left,
-#touch-buttons-col-right {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
 }
 
 .touch-btn {
@@ -894,7 +889,7 @@ body {
   #joystick-zone {
     width: 130px;
     height: 130px;
-    bottom: 24px;
+    bottom: 60px;
     left: 16px;
   }
 
@@ -913,7 +908,7 @@ body {
   }
 
   #touch-buttons {
-    bottom: 24px;
+    bottom: 60px;
     right: 16px;
   }
 
