@@ -11,7 +11,7 @@ let _gorillaLoadPromise = null;
 
 function loadSharedModel() {
   if (_modelLoadPromise) return _modelLoadPromise;
-  _modelLoadPromise = AssetLoader.loadGLTF('models/jetski.glb').then((gltf) => {
+  _modelLoadPromise = AssetLoader.loadGLTF('src/models/jetski.glb').then((gltf) => {
     _sharedModel = gltf.scene;
     return _sharedModel;
   });
