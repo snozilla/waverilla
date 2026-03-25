@@ -5,6 +5,11 @@ export class AudioManager {
     this.engineNode = null;
     this.engineGain = null;
     this.masterGain = null;
+    this.sfxGain = null;
+    this.musicGain = null;
+    this._sfxVolume = 1;
+    this._musicVolume = 1;
+    this._paused = false;
   }
 
   init() {
@@ -13,9 +18,48 @@ export class AudioManager {
     this.masterGain = this.ctx.createGain();
     this.masterGain.gain.value = 0.5;
     this.masterGain.connect(this.ctx.destination);
+
+    this.sfxGain = this.ctx.createGain();
+    this.sfxGain.gain.value = this._sfxVolume;
+    this.sfxGain.connect(this.masterGain);
+
+    this.musicGain = this.ctx.createGain();
+    this.musicGain.gain.value = this._musicVolume;
+    this.musicGain.connect(this.masterGain);
+
     this.initialized = true;
     this.startEngine();
     if (!this.skipIntro) this.playIntro();
+  }
+
+  setSFXVolume(v) {
+    this._sfxVolume = Math.max(0, Math.min(1, v));
+    if (this.sfxGain && !this._paused) {
+      this.sfxGain.gain.setTargetAtTime(this._sfxVolume, this.ctx.currentTime, 0.02);
+    }
+  }
+
+  setMusicVolume(v) {
+    this._musicVolume = Math.max(0, Math.min(1, v));
+    if (this.musicGain && !this._paused) {
+      this.musicGain.gain.setTargetAtTime(this._musicVolume, this.ctx.currentTime, 0.02);
+    }
+  }
+
+  pauseAudio() {
+    if (!this.ctx || this._paused) return;
+    this._paused = true;
+    const t = this.ctx.currentTime;
+    this.sfxGain.gain.setTargetAtTime(0, t, 0.05);
+    this.musicGain.gain.setTargetAtTime(0, t, 0.05);
+  }
+
+  resumeAudio() {
+    if (!this.ctx || !this._paused) return;
+    this._paused = false;
+    const t = this.ctx.currentTime;
+    this.sfxGain.gain.setTargetAtTime(this._sfxVolume, t, 0.05);
+    this.musicGain.gain.setTargetAtTime(this._musicVolume, t, 0.05);
   }
 
   async playIntro() {
@@ -30,7 +74,7 @@ export class AudioManager {
       this.introGain = this.ctx.createGain();
       this.introGain.gain.value = 0.4;
       this.introSource.connect(this.introGain);
-      this.introGain.connect(this.ctx.destination);
+      this.introGain.connect(this.musicGain);
       this.introSource.start();
     } catch (e) {
       console.warn('Failed to load intro music:', e);
@@ -53,7 +97,7 @@ export class AudioManager {
         const gain = this.ctx.createGain();
         gain.gain.value = track.volume ?? 0.3;
         source.connect(gain);
-        gain.connect(this.ctx.destination);
+        gain.connect(this.musicGain);
         source.start();
         this.trackSources.push({ source, gain });
       } catch (e) {
@@ -104,7 +148,7 @@ export class AudioManager {
 
     this.engineOsc.connect(this.engineFilter);
     this.engineFilter.connect(this.engineGain);
-    this.engineGain.connect(this.masterGain);
+    this.engineGain.connect(this.sfxGain);
     this.engineOsc.start();
 
     // Second harmonic
@@ -116,7 +160,7 @@ export class AudioManager {
     this.engineGain2.gain.value = 0.03;
 
     this.engineOsc2.connect(this.engineGain2);
-    this.engineGain2.connect(this.masterGain);
+    this.engineGain2.connect(this.sfxGain);
     this.engineOsc2.start();
   }
 
@@ -166,7 +210,7 @@ export class AudioManager {
     gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + duration);
 
     osc.connect(gain);
-    gain.connect(this.masterGain);
+    gain.connect(this.sfxGain);
     osc.start();
     osc.stop(this.ctx.currentTime + duration);
   }
@@ -193,7 +237,7 @@ export class AudioManager {
     const gain = this.ctx.createGain();
     gain.gain.value = 0.1;
     src.connect(gain);
-    gain.connect(this.masterGain);
+    gain.connect(this.sfxGain);
     src.start();
   }
 
@@ -218,5 +262,49 @@ export class AudioManager {
     notes.forEach((n, i) => {
       setTimeout(() => this.playTone(n, 0.3, 'sine', 0.2), i * 120);
     });
+  }
+
+  playPickup() {
+    // Two ascending chime tones
+    this.playTone(880, 0.12, 'sine', 0.18);
+    setTimeout(() => this.playTone(1320, 0.15, 'sine', 0.15), 80);
+  }
+
+  playCollision() {
+    if (!this.ctx) return;
+    // Low frequency impact burst
+    const osc = this.ctx.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.value = 80;
+    osc.frequency.linearRampToValueAtTime(30, this.ctx.currentTime + 0.2);
+
+    const gain = this.ctx.createGain();
+    gain.gain.value = 0.25;
+    gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.3);
+
+    // Noise layer for crunch
+    const buffer = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.15, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) {
+      data[i] = (Math.random() - 0.5) * 0.6 * (1 - i / data.length);
+    }
+    const noiseSrc = this.ctx.createBufferSource();
+    noiseSrc.buffer = buffer;
+    const noiseGain = this.ctx.createGain();
+    noiseGain.gain.value = 0.15;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 300;
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.sfxGain);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.3);
+
+    noiseSrc.connect(noiseGain);
+    noiseGain.connect(this.sfxGain);
+    noiseSrc.start();
   }
 }

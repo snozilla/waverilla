@@ -1,4 +1,4 @@
-import { RACE, COLORS } from '../utils/constants.js';
+import { RACE, COLORS, PICKUP } from '../utils/constants.js';
 
 export class HUD {
   constructor() {
@@ -11,9 +11,41 @@ export class HUD {
     this.resultsList = document.getElementById('results-list');
     this.restartBtn = document.getElementById('restart-btn');
     this.startOverlay = document.getElementById('start-overlay');
-    this.powerArrows = document.querySelectorAll('.power-arrow');
+    this.powerSegs = document.querySelectorAll('.power-seg');
     this.minimapCanvas = document.getElementById('minimap-canvas');
     this.minimapCtx = this.minimapCanvas.getContext('2d');
+
+    // Pickup HUD
+    this.pickupEl = document.getElementById('hud-pickup');
+    this.pickupLabel = document.getElementById('pickup-label');
+    this.pickupTimerFill = document.getElementById('pickup-timer-fill');
+
+    // Pause overlay
+    this.pauseOverlay = document.getElementById('pause-overlay');
+    this.resumeBtn = document.getElementById('resume-btn');
+    this.sfxSlider = document.getElementById('sfx-volume');
+    this.musicSlider = document.getElementById('music-volume');
+
+    this.pauseRestartBtn = document.getElementById('pause-restart-btn');
+
+    // Callbacks (set by Game)
+    this.onResume = null;
+    this.onSFXVolume = null;
+    this.onMusicVolume = null;
+    this.onPauseRestart = null;
+
+    this.pauseRestartBtn.addEventListener('click', () => {
+      if (this.onPauseRestart) this.onPauseRestart();
+    });
+    this.resumeBtn.addEventListener('click', () => {
+      if (this.onResume) this.onResume();
+    });
+    this.sfxSlider.addEventListener('input', () => {
+      if (this.onSFXVolume) this.onSFXVolume(parseFloat(this.sfxSlider.value));
+    });
+    this.musicSlider.addEventListener('input', () => {
+      if (this.onMusicVolume) this.onMusicVolume(parseFloat(this.musicSlider.value));
+    });
   }
 
   show() {
@@ -41,8 +73,8 @@ export class HUD {
   }
 
   updatePower(power) {
-    this.powerArrows.forEach((arrow, i) => {
-      arrow.classList.toggle('active', i < power);
+    this.powerSegs.forEach((seg, i) => {
+      seg.classList.toggle('active', i < power);
     });
   }
 
@@ -81,8 +113,35 @@ export class HUD {
     this.resultsOverlay.classList.add('hidden');
   }
 
+  showPause() {
+    this.pauseOverlay.classList.remove('hidden');
+  }
+
+  hidePause() {
+    this.pauseOverlay.classList.add('hidden');
+  }
+
   hideStart() {
     this.startOverlay.classList.add('hidden');
+  }
+
+  updatePickup(type, timer, maxDuration) {
+    if (!type || timer <= 0) {
+      this.pickupEl.classList.add('hidden');
+      return;
+    }
+
+    this.pickupEl.classList.remove('hidden');
+
+    const labels = { turbo: 'TURBO', laser: 'LASER', electric: 'SHIELD', giant: 'GIANT' };
+    const hexColors = { turbo: '#ff8800', laser: '#aa00ff', electric: '#00ffff', giant: '#ff2222' };
+
+    const color = hexColors[type] || '#ffffff';
+    this.pickupLabel.textContent = labels[type] || type.toUpperCase();
+    this.pickupLabel.style.color = color;
+    this.pickupTimerFill.style.background = color;
+    this.pickupTimerFill.style.width = `${(timer / maxDuration) * 100}%`;
+    this.pickupEl.style.borderColor = color + '66';
   }
 
   updateMinimap(racers, track) {

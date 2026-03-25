@@ -20,7 +20,7 @@ import { BoostEffect } from './effects/BoostEffect.js';
 import { createSkybox } from './effects/Skybox.js';
 import { HUD } from './hud/HUD.js';
 import { AudioManager } from './audio/AudioManager.js';
-import { RACE, TRACKS } from './utils/constants.js';
+import { RACE, TRACKS, PICKUP } from './utils/constants.js';
 
 export class Game {
   constructor() {
@@ -37,6 +37,8 @@ export class Game {
     this.initialized = false;
     this.playerWasAirborne = false;
     this.selectedTrackIndex = 0;
+    this.paused = false;
+    this._pauseHeld = false;
 
     this.init();
   }
@@ -94,9 +96,24 @@ export class Game {
     this.sprays = this.allRacers.map(() => new Spray(this.scene));
     this.boostEffect = new BoostEffect(this.scene);
 
+    // Laser traction visible line
+    const laserGeo = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(), new THREE.Vector3()
+    ]);
+    const laserMat = new THREE.LineBasicMaterial({
+      color: 0xaa00ff,
+      transparent: true,
+      opacity: 0.7,
+    });
+    this.laserLine = new THREE.Line(laserGeo, laserMat);
+    this.laserLine.visible = false;
+    this.laserLine.frustumCulled = false;
+    this.scene.add(this.laserLine);
+
     // Race manager
     this.raceManager = new RaceManager(this.track, this.allRacers);
     this.setupRaceCallbacks();
+    this.setupPauseCallbacks();
 
     // Position racers at start
     this.positionAtStart();
@@ -165,6 +182,24 @@ export class Game {
         this.hud.showResults(finishOrder);
       }, 1500);
     };
+  }
+
+  setupPauseCallbacks() {
+    this.hud.onResume = () => this.togglePause();
+    this.hud.onSFXVolume = (v) => this.audio.setSFXVolume(v);
+    this.hud.onMusicVolume = (v) => this.audio.setMusicVolume(v);
+    this.hud.onPauseRestart = () => this.backToLevelSelect();
+  }
+
+  togglePause() {
+    this.paused = !this.paused;
+    if (this.paused) {
+      this.audio.pauseAudio();
+      this.hud.showPause();
+    } else {
+      this.audio.resumeAudio();
+      this.hud.hidePause();
+    }
   }
 
   drawTrackPreviews() {
@@ -296,21 +331,47 @@ export class Game {
     // Reconnect race manager
     this.raceManager.track = this.track;
     this.raceManager.reset();
+    this.resetPickups();
     this.positionAtStart();
   }
 
   backToLevelSelect() {
+    this.paused = false;
+    this.hud.hidePause();
+    this.audio.resumeAudio();
+    this.audio.stopTrackMusic();
+    this.audio.stopEngine();
     this.hud.hideResults();
     this.hud.hide();
     this.started = false;
     this.raceManager.reset();
+    this.resetPickups();
     this.positionAtStart();
     this.startOverlay.classList.remove('hidden');
   }
 
+  resetPickups() {
+    // Reset all racer powerups
+    for (const racer of this.allRacers) {
+      if (racer.activePickup === 'giant') {
+        racer.mesh.scale.setScalar(racer.originalScale || 1);
+      }
+      racer.activePickup = null;
+      racer.pickupTimer = 0;
+      racer.pickupMaxDuration = 0;
+      racer.laserTarget = null;
+    }
+    // Reset track pickups
+    this.track.resetPickups();
+  }
+
   restart() {
+    this.paused = false;
+    this.hud.hidePause();
+    this.audio.resumeAudio();
     this.hud.hideResults();
     this.raceManager.reset();
+    this.resetPickups();
     this.positionAtStart();
     this.raceManager.startCountdown();
   }
@@ -323,7 +384,7 @@ export class Game {
     if (!this.started) {
       // Animate water + track + buoyancy even before start so racers are visible
       this.water.update(this.time);
-      this.track.update(this.time);
+      this.track.update(this.time, dt);
       for (const racer of this.allRacers) {
         this.buoyancy.apply(racer, this.time, dt);
         racer.mesh.position.copy(racer.position);
@@ -353,16 +414,28 @@ export class Game {
       return;
     }
 
+    // Pause toggle (only during racing, not on results)
+    const isRacing = this.raceManager.state === 'racing';
+    if (this.input.pause && !this._pauseHeld && isRacing) {
+      this._pauseHeld = true;
+      this.togglePause();
+    }
+    if (!this.input.pause) this._pauseHeld = false;
+
+    // When paused: still render frozen scene, skip everything else
+    if (this.paused) {
+      this.composer.render();
+      return;
+    }
+
     // Water
     this.water.update(this.time);
 
-    // Track update (buoy bobbing, boost pads)
-    this.track.update(this.time);
+    // Track update (buoy bobbing, boost pads, pickups)
+    this.track.update(this.time, dt);
 
     // Race manager
     this.raceManager.update(dt);
-
-    const isRacing = this.raceManager.state === 'racing';
 
     // Input
     this.input.update(dt);
@@ -370,10 +443,12 @@ export class Game {
     // Player physics
     if (isRacing && !this.player.finished) {
       // Check boost pad
-      if (this.track.checkBoostPad(this.player.position)) {
+      const hitPad = this.track.checkBoostPad(this.player.position);
+      if (hitPad) {
         if (this.player.boostTimer <= 0) {
           this.player.boostTimer = 2.0;
           this.audio.playBoost();
+          this.track.flashBoostPad(hitPad, this.time);
         }
       }
 
@@ -401,6 +476,13 @@ export class Game {
       const ctrl = this.aiControllers[i];
 
       if (isRacing && !ai.finished) {
+        // AI boost pad check
+        const aiPad = this.track.checkBoostPad(ai.position);
+        if (aiPad && ai.boostTimer <= 0) {
+          ai.boostTimer = 2.0;
+          this.track.flashBoostPad(aiPad, this.time);
+        }
+
         const { throttle, steer } = ctrl.update(
           ai, this.track, this.player.progress, this.time, dt
         );
@@ -410,9 +492,97 @@ export class Game {
       this.buoyancy.apply(ai, this.time, dt);
     }
 
+    // Update stun timers for all racers
+    for (const racer of this.allRacers) {
+      racer.updateStun(dt);
+    }
+
+    // Pickup collection for all racers
+    if (isRacing) {
+      for (const racer of this.allRacers) {
+        if (racer.finished) continue;
+        const hitPickup = this.track.checkPickup(racer.position);
+        if (hitPickup) {
+          const type = hitPickup.collect();
+          if (type) {
+            const duration = PICKUP.durations[type];
+            racer.activatePickup(type, duration);
+            if (racer === this.player) {
+              this.audio.playPickup();
+            }
+          }
+        }
+      }
+
+      // Update powerup timers + laser traction
+      for (const racer of this.allRacers) {
+        racer.updatePickup(dt);
+
+        // Laser traction: pull toward racer ahead
+        if (racer.activePickup === 'laser') {
+          let bestTarget = null;
+          let bestProgress = Infinity;
+          const myProgress = racer.lap * 1000 + racer.progress;
+          for (const other of this.allRacers) {
+            if (other === racer || other.finished) continue;
+            const otherProgress = other.lap * 1000 + other.progress;
+            if (otherProgress > myProgress && otherProgress < bestProgress) {
+              bestProgress = otherProgress;
+              bestTarget = other;
+            }
+          }
+          if (bestTarget) {
+            racer.laserTarget = bestTarget;
+            const dx = bestTarget.position.x - racer.position.x;
+            const dz = bestTarget.position.z - racer.position.z;
+            const dist = Math.sqrt(dx * dx + dz * dz);
+            if (dist > 1) {
+              const pullStrength = 25;
+              racer.velocity.x += (dx / dist) * pullStrength * dt;
+              racer.velocity.z += (dz / dist) * pullStrength * dt;
+            }
+          }
+        }
+      }
+
+      // Update laser line visual for player
+      if (this.player.activePickup === 'laser' && this.player.laserTarget) {
+        const positions = this.laserLine.geometry.attributes.position;
+        const p = this.player.position;
+        const t = this.player.laserTarget.position;
+        positions.setXYZ(0, p.x, p.y + 1.5, p.z);
+        positions.setXYZ(1, t.x, t.y + 1.5, t.z);
+        positions.needsUpdate = true;
+        this.laserLine.visible = true;
+        this.laserLine.material.opacity = 0.4 + Math.sin(this.time * 10) * 0.3;
+      } else {
+        this.laserLine.visible = false;
+      }
+    }
+
     // Collisions
-    this.collisions.checkRacerCollisions(this.allRacers);
+    const collisionEvents = this.collisions.checkRacerCollisions(this.allRacers);
     this.collisions.checkBuoyCollisions(this.allRacers, this.track.buoys);
+
+    // Process collision events — tackle mechanic + effects
+    for (const evt of collisionEvents) {
+      const { a, b, impactSpeed } = evt;
+      const playerInvolved = (a === this.player || b === this.player);
+
+      if (impactSpeed > 5) {
+        this.audio.playCollision();
+        this.chaseCamera.addShake(Math.min(impactSpeed * 0.05, 0.8));
+      }
+
+      // Tackle: player presses X during hard collision → stun opponent
+      if (playerInvolved && this.input.tackle && impactSpeed > 8) {
+        const opponent = (a === this.player) ? b : a;
+        if (!opponent.stunned) {
+          opponent.stun(3);
+          this.chaseCamera.addShake(1.0);
+        }
+      }
+    }
 
     // Effects
     for (let i = 0; i < this.allRacers.length; i++) {
@@ -449,6 +619,7 @@ export class Game {
     this.hud.updateLap(this.player.lap);
     this.hud.updatePower(this.player.power);
     this.hud.updateMinimap(this.allRacers, this.track);
+    this.hud.updatePickup(this.player.activePickup, this.player.pickupTimer, this.player.pickupMaxDuration);
 
     // Render
     this.composer.render();

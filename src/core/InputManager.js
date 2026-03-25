@@ -32,6 +32,14 @@ export class InputManager {
     return !!this.keys['Space'];
   }
 
+  get tackle() {
+    return !!this.keys['KeyX'];
+  }
+
+  get pause() {
+    return !!this.keys['Escape'];
+  }
+
   update(dt) {
     const smoothRate = 6;
     this.smoothed.throttle += (this.throttle - this.smoothed.throttle) * Math.min(1, smoothRate * dt);

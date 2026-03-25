@@ -58,6 +58,20 @@ export class JetSki {
 
     this.colorIndex = colorIndex;
 
+    // Stun state
+    this.stunned = false;
+    this.stunnedTimer = 0;
+    this.gorillaMesh = null;
+    this.gorillaOrigPos = null;
+    this.gorillaOrigRot = null;
+
+    // Pickup / powerup state
+    this.activePickup = null;
+    this.pickupTimer = 0;
+    this.pickupMaxDuration = 0;
+    this.laserTarget = null;
+    this.originalScale = 1;
+
     // Use GLB model if preloaded, otherwise fallback to placeholder
     if (_sharedModel) {
       this.mesh = this.createFromGLB(COLORS.racers[colorIndex]);
@@ -148,6 +162,9 @@ export class JetSki {
       });
 
       inner.add(gorilla);
+      this.gorillaMesh = gorilla;
+      this.gorillaOrigPos = gorilla.position.clone();
+      this.gorillaOrigRot = gorilla.rotation.clone();
     }
 
     return wrapper;
@@ -171,8 +188,102 @@ export class JetSki {
     }
   }
 
+  stun(duration) {
+    this.stunned = true;
+    this.stunnedTimer = duration;
+  }
+
+  updateStun(dt) {
+    if (!this.stunned) return;
+    this.stunnedTimer -= dt;
+
+    if (this.gorillaMesh && this.gorillaOrigPos) {
+      const totalDuration = 3;
+      const elapsed = totalDuration - this.stunnedTimer;
+
+      if (elapsed < 0.3) {
+        // Fall sideways quickly
+        const t = elapsed / 0.3;
+        this.gorillaMesh.rotation.z = t * 1.4;
+        this.gorillaMesh.position.y = this.gorillaOrigPos.y - t * 0.8;
+      } else if (this.stunnedTimer > 0.5) {
+        // Stay fallen
+        this.gorillaMesh.rotation.z = 1.4;
+        this.gorillaMesh.position.y = this.gorillaOrigPos.y - 0.8;
+      } else {
+        // Recover in last 0.5s
+        const t = this.stunnedTimer / 0.5;
+        this.gorillaMesh.rotation.z = t * 1.4;
+        this.gorillaMesh.position.y = this.gorillaOrigPos.y - t * 0.8;
+      }
+    }
+
+    if (this.stunnedTimer <= 0) {
+      this.stunned = false;
+      this.stunnedTimer = 0;
+      if (this.gorillaMesh && this.gorillaOrigPos) {
+        this.gorillaMesh.rotation.z = this.gorillaOrigRot.z;
+        this.gorillaMesh.position.y = this.gorillaOrigPos.y;
+      }
+    }
+  }
+
+  activatePickup(type, duration) {
+    this.activePickup = type;
+    this.pickupTimer = duration;
+    this.pickupMaxDuration = duration;
+    this.laserTarget = null;
+
+    if (type === 'giant') {
+      this.originalScale = this.mesh.scale.x;
+      this.mesh.scale.setScalar(2);
+    }
+  }
+
+  updatePickup(dt) {
+    if (!this.activePickup) return;
+    this.pickupTimer -= dt;
+    if (this.pickupTimer <= 0) {
+      // Deactivate
+      if (this.activePickup === 'giant') {
+        this.mesh.scale.setScalar(this.originalScale || 1);
+      }
+      this.activePickup = null;
+      this.pickupTimer = 0;
+      this.pickupMaxDuration = 0;
+      this.laserTarget = null;
+    }
+  }
+
   applyPhysics(throttle, steer, dt, isBoosting = false) {
-    if (isBoosting && this.boostTimer > 0) {
+    // If stunned, only apply drag (no thrust/steering)
+    if (this.stunned) {
+      const dragX = -this.velocity.x * Math.abs(this.velocity.x) * JETSKI.dragCoeff;
+      const dragZ = -this.velocity.z * Math.abs(this.velocity.z) * JETSKI.dragCoeff;
+      this.velocity.x += dragX * dt;
+      this.velocity.z += dragZ * dt;
+
+      this.position.x += this.velocity.x * dt;
+      this.position.y += this.velocity.y * dt;
+      this.position.z += this.velocity.z * dt;
+
+      const fwdX = Math.sin(this.rotation);
+      const fwdZ = Math.cos(this.rotation);
+      this.speed = this.velocity.x * fwdX + this.velocity.z * fwdZ;
+
+      this.mesh.position.copy(this.position);
+      this.mesh.rotation.order = 'YXZ';
+      this.mesh.rotation.y = this.rotation;
+      this.mesh.rotation.x = this.pitch;
+      this.mesh.rotation.z = this.roll;
+      return;
+    }
+
+    // Turbo powerup forces boost state
+    if (this.activePickup === 'turbo') {
+      this.boosting = true;
+      this.boostTimer = Math.max(this.boostTimer, 0.5);
+    } else if (isBoosting && this.boostTimer > 0) {
       this.boosting = true;
       this.boostTimer -= dt;
     } else {

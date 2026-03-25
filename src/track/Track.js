@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import { RACE, COLORS } from '../utils/constants.js';
+import { RACE, COLORS, PICKUP } from '../utils/constants.js';
 import { Buoy } from '../entities/Buoy.js';
+import { Pickup } from '../entities/Pickup.js';
 
 export class Track {
   constructor(scene, water, trackWaypoints, boostPadIndices) {
@@ -53,6 +54,10 @@ export class Track {
       }
     }
 
+    // Spawn pickups at midpoints between every-other waypoint pair
+    this.pickups = [];
+    this.spawnPickups(scene);
+
     // Start/finish line visual
     this.createStartLine(scene);
 
@@ -60,10 +65,20 @@ export class Track {
     this.createTrackLine(scene);
   }
 
-  createBoostPad(scene, position, tangent, index) {
-    const padGeo = new THREE.PlaneGeometry(6, 10);
-    padGeo.rotateX(-Math.PI / 2);
+  spawnPickups(scene) {
+    const numCheckpoints = this.rawWaypoints.length;
+    for (let i = 0; i < numCheckpoints; i += 2) {
+      const t1 = i / numCheckpoints;
+      const t2 = ((i + 1) % numCheckpoints) / numCheckpoints;
+      const midT = (t1 + t2) / 2;
+      const point = this.spline.getPointAt(midT);
+      point.y = 0;
+      const pickup = new Pickup(scene, point);
+      this.pickups.push(pickup);
+    }
+  }
 
+  createBoostPad(scene, position, tangent, index) {
     const padMat = new THREE.MeshStandardMaterial({
       color: 0x00ffff,
       emissive: 0x00aaff,
@@ -73,17 +88,43 @@ export class Track {
       side: THREE.DoubleSide,
     });
 
-    const pad = new THREE.Mesh(padGeo, padMat);
-    pad.position.copy(position);
-    pad.position.y = 0.1;
-    pad.rotation.y = Math.atan2(tangent.x, tangent.z);
-    scene.add(pad);
-    this.sceneObjects.push(pad);
+    const group = new THREE.Group();
+    group.position.copy(position);
+    group.position.y = 0.1;
+    group.rotation.y = Math.atan2(tangent.x, tangent.z);
+
+    // Create 3 chevrons pointing forward (along +Z local)
+    const chevronWidth = 6;
+    const armLength = 3.5;
+    const thickness = 1.8;
+    const spacing = 3.2;
+
+    for (let i = 0; i < 3; i++) {
+      const shape = new THREE.Shape();
+      // Outer chevron V
+      shape.moveTo(0, armLength);
+      shape.lineTo(chevronWidth / 2, 0);
+      shape.lineTo(chevronWidth / 2, -thickness);
+      shape.lineTo(0, armLength - thickness);
+      shape.lineTo(-chevronWidth / 2, -thickness);
+      shape.lineTo(-chevronWidth / 2, 0);
+      shape.closePath();
+
+      const geo = new THREE.ShapeGeometry(shape);
+      geo.rotateX(-Math.PI / 2);
+      geo.rotateY(Math.PI);
+      const mesh = new THREE.Mesh(geo, padMat);
+      mesh.position.z = (i - 1) * spacing;
+      group.add(mesh);
+    }
+
+    scene.add(group);
+    this.sceneObjects.push(group);
 
     this.boostPads.push({
       position: position.clone(),
       radius: 8,
-      mesh: pad,
+      mesh: group,
       index,
     });
   }
@@ -136,16 +177,37 @@ export class Track {
     this.sceneObjects.push(line);
   }
 
-  update(time) {
+  update(time, dt) {
     // Update buoy bobbing
     for (const buoy of this.buoys) {
       buoy.update(time);
     }
 
+    // Update pickups
+    for (const pickup of this.pickups) {
+      pickup.update(time, dt || 0.016);
+    }
+
     // Animate boost pads
+    const baseEmissive = 0.5 + Math.sin(time * 5) * 0.3;
     for (const pad of this.boostPads) {
       pad.mesh.position.y = 0.1 + Math.sin(time * 3) * 0.15;
-      pad.mesh.material.emissiveIntensity = 0.5 + Math.sin(time * 5) * 0.3;
+
+      // Flash effect on hit
+      let flashT = 0;
+      if (pad.flashTime !== undefined) {
+        flashT = Math.max(0, 1 - (time - pad.flashTime) / 0.4);
+      }
+      const emissive = baseEmissive + flashT * 2.0;
+      const scale = 1 + flashT * 0.4;
+      pad.mesh.scale.set(scale, 1, scale);
+
+      pad.mesh.traverse(child => {
+        if (child.isMesh) {
+          child.material.emissiveIntensity = emissive;
+          child.material.opacity = 0.6 + flashT * 0.4;
+        }
+      });
     }
 
     // Start line on water
@@ -211,10 +273,32 @@ export class Track {
       const dx = position.x - pad.position.x;
       const dz = position.z - pad.position.z;
       if (dx * dx + dz * dz < pad.radius * pad.radius) {
-        return true;
+        return pad;
       }
     }
-    return false;
+    return null;
+  }
+
+  checkPickup(position) {
+    for (const pickup of this.pickups) {
+      if (!pickup.active) continue;
+      const dx = position.x - pickup.position.x;
+      const dz = position.z - pickup.position.z;
+      if (dx * dx + dz * dz < PICKUP.collectionRadius * PICKUP.collectionRadius) {
+        return pickup;
+      }
+    }
+    return null;
+  }
+
+  resetPickups() {
+    for (const pickup of this.pickups) {
+      pickup.reset();
+    }
+  }
+
+  flashBoostPad(pad, time) {
+    pad.flashTime = time;
   }
 
   destroy() {
@@ -235,6 +319,11 @@ export class Track {
         obj.material.dispose();
       }
     }
+    // Remove pickups
+    for (const pickup of this.pickups) {
+      pickup.destroy();
+    }
+    this.pickups = [];
     this.buoys = [];
     this.boostPads = [];
     this.sceneObjects = [];

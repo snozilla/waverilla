@@ -76,6 +76,25 @@ export const COLORS = {
   sky: 0x87ceeb,
 };
 
+// ── Pickups / Powerups ──
+export const PICKUP = {
+  collectionRadius: 5,
+  respawnTime: 10,
+  types: ['turbo', 'laser', 'electric', 'giant'],
+  durations: {
+    turbo: 3,
+    laser: 4,
+    electric: 5,
+    giant: 5,
+  },
+  colors: {
+    turbo: 0xff8800,
+    laser: 0xaa00ff,
+    electric: 0x00ffff,
+    giant: 0xff2222,
+  },
+};
+
 // ── Track definitions ──
 export const TRACKS = [
   {
