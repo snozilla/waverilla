@@ -136,6 +136,11 @@ export class Game {
     startOverlay.addEventListener('click', initAudioOnce);
     startOverlay.addEventListener('touchstart', initAudioOnce);
 
+    // iOS: keep trying to resume audio context on any touch
+    document.addEventListener('touchstart', () => {
+      this.audio.ensureResumed();
+    }, { passive: true });
+
     // Bind track card clicks
     const trackCards = startOverlay.querySelectorAll('.track-card');
     trackCards.forEach(card => {

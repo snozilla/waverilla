@@ -13,13 +13,17 @@ export class AudioManager {
   }
 
   init() {
-    if (this.initialized) return;
-    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-
-    // iOS Safari requires explicit resume on user gesture
-    if (this.ctx.state === 'suspended') {
-      this.ctx.resume();
+    if (!this.ctx) {
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
     }
+
+    // iOS Safari: always try to resume on every user gesture
+    if (this.ctx.state === 'suspended' || this.ctx.state === 'interrupted') {
+      const p = this.ctx.resume();
+      if (p && p.catch) p.catch(() => {});
+    }
+
+    if (this.initialized) return;
 
     this.masterGain = this.ctx.createGain();
     this.masterGain.gain.value = 0.5;
@@ -34,14 +38,31 @@ export class AudioManager {
     this.musicGain.connect(this.masterGain);
 
     this.initialized = true;
+
+    // Play a silent buffer to unlock audio on iOS
+    this._unlockiOS();
+
     this.startEngine();
     if (!this.skipIntro) this.playIntro();
   }
 
+  // iOS requires playing a buffer from a user gesture to unlock audio
+  _unlockiOS() {
+    if (!this.ctx) return;
+    const buf = this.ctx.createBuffer(1, 1, 22050);
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(this.ctx.destination);
+    src.start(0);
+    src.stop(0.001);
+  }
+
   // Call on any user interaction to ensure audio works on iOS
   ensureResumed() {
-    if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
+    if (!this.ctx) return;
+    if (this.ctx.state === 'suspended' || this.ctx.state === 'interrupted') {
+      const p = this.ctx.resume();
+      if (p && p.catch) p.catch(() => {});
     }
   }
 
