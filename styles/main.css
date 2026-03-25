@@ -675,56 +675,62 @@ body {
 
 #joystick-zone {
   position: absolute;
-  bottom: 20px;
-  left: 20px;
-  width: 160px;
-  height: 160px;
+  bottom: 16px;
+  left: 12px;
+  width: 150px;
+  height: 150px;
   pointer-events: all;
   touch-action: none;
 }
 
 #joystick-base {
   position: absolute;
-  width: 140px;
-  height: 140px;
+  width: 130px;
+  height: 130px;
   left: 10px;
   top: 10px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.08);
-  border: 2px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.06);
+  border: 2px solid rgba(255,255,255,0.15);
 }
 
 #joystick-thumb {
   position: absolute;
-  width: 56px;
-  height: 56px;
-  left: 52px;
-  top: 52px;
+  width: 52px;
+  height: 52px;
+  left: 49px;
+  top: 49px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(0,204,255,0.6), rgba(0,136,255,0.3));
-  border: 2px solid rgba(255,255,255,0.4);
+  background: radial-gradient(circle, rgba(0,204,255,0.5), rgba(0,136,255,0.25));
+  border: 2px solid rgba(255,255,255,0.35);
   transition: none;
 }
 
 #touch-buttons {
   position: absolute;
-  bottom: 20px;
-  right: 20px;
+  bottom: 16px;
+  right: 12px;
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   pointer-events: all;
   touch-action: none;
 }
 
+#touch-buttons-col-left,
+#touch-buttons-col-right {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .touch-btn {
-  width: 64px;
-  height: 64px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
-  border: 2px solid rgba(255,255,255,0.3);
-  background: rgba(255,255,255,0.08);
-  color: #fff;
-  font-size: 11px;
+  border: 2px solid rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.8);
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 1px;
   text-transform: uppercase;
@@ -742,8 +748,11 @@ body {
 }
 
 #touch-boost {
-  background: rgba(255,100,0,0.15);
-  border-color: rgba(255,100,0,0.4);
+  width: 70px;
+  height: 70px;
+  background: rgba(255,100,0,0.12);
+  border-color: rgba(255,100,0,0.35);
+  font-size: 11px;
 }
 
 #touch-boost.active {
@@ -753,15 +762,16 @@ body {
 
 #touch-pause {
   position: absolute;
-  top: 20px;
-  left: 20px;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  border: 2px solid rgba(255,255,255,0.2);
-  background: rgba(0,0,0,0.3);
-  color: #fff;
-  font-size: 18px;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 2px solid rgba(255,255,255,0.15);
+  background: rgba(0,0,0,0.25);
+  color: rgba(255,255,255,0.6);
+  font-size: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -772,78 +782,171 @@ body {
 }
 
 /* Mobile responsive */
-@media (max-width: 768px) {
+@media (max-width: 768px), (pointer: coarse) {
   #game-logo {
-    max-width: 400px;
+    max-width: 340px;
   }
 
   #start-content .select-prompt {
-    font-size: 16px;
+    font-size: 14px;
+    margin-bottom: 12px;
   }
 
   #track-select {
-    max-width: 360px;
-    gap: 10px;
+    max-width: 320px;
+    gap: 8px;
   }
 
   .track-card {
-    padding: 10px;
+    padding: 8px;
+    border-radius: 12px;
   }
 
   .track-name {
-    font-size: 13px;
+    font-size: 12px;
   }
 
   .track-preview {
-    width: 60px;
-    height: 60px;
+    width: 50px;
+    height: 50px;
   }
 
-  #hud-speed {
-    bottom: 190px;
-    left: 16px;
-    padding: 8px 14px;
+  .difficulty-badge {
+    font-size: 9px;
+    padding: 2px 8px;
   }
 
-  #speed-value {
-    font-size: 32px;
-  }
-
-  #hud-position {
-    top: 16px;
-    right: 16px;
-    padding: 8px 14px;
-  }
-
-  #position-value {
-    font-size: 36px;
-  }
-
+  /* HUD - compact top bar */
   #hud-lap {
-    top: 16px;
-    padding: 8px 14px;
+    top: 10px;
+    padding: 6px 12px;
+    border-radius: 10px;
   }
 
   #lap-value {
-    font-size: 20px;
+    font-size: 16px;
+    margin-top: 2px;
   }
 
+  #hud-position {
+    top: 10px;
+    right: 10px;
+    padding: 6px 12px;
+    border-radius: 10px;
+  }
+
+  #position-value {
+    font-size: 28px;
+  }
+
+  .hud-label {
+    font-size: 10px;
+  }
+
+  /* Speed - top left, small */
+  #hud-speed {
+    top: 10px;
+    left: 10px;
+    bottom: auto;
+    padding: 6px 12px;
+    border-radius: 10px;
+  }
+
+  #speed-value {
+    font-size: 24px;
+  }
+
+  .hud-unit {
+    font-size: 10px;
+  }
+
+  /* Minimap - small, mid-right above buttons */
   #hud-minimap {
-    bottom: 190px;
-    right: 16px;
+    bottom: auto;
+    top: 50px;
+    right: 10px;
+    padding: 4px;
+    border-radius: 10px;
   }
 
   #minimap-canvas {
-    width: 100px;
-    height: 100px;
+    width: 70px;
+    height: 70px;
   }
 
+  /* Power bar - above joystick */
   #hud-power {
-    bottom: 190px;
+    bottom: 174px;
+    left: 12px;
+    transform: none;
+    min-width: 100px;
+    padding: 6px 10px;
+    border-radius: 8px;
   }
 
+  /* Pickup indicator */
   #hud-pickup {
-    top: 70px;
-    left: 16px;
+    top: 44px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 6px 14px;
+    border-radius: 8px;
+  }
+
+  #pickup-label {
+    font-size: 11px;
+    margin-bottom: 4px;
+  }
+
+  /* Credits button */
+  #credits-btn {
+    margin-top: 14px;
+    font-size: 11px;
+    padding: 6px 20px;
+  }
+
+  /* Countdown */
+  #countdown-overlay {
+    font-size: 80px;
+  }
+
+  /* Results */
+  #results-content {
+    padding: 24px 28px;
+    border-radius: 16px;
+    margin: 16px;
+  }
+
+  #race-complete-logo {
+    max-width: 280px;
+  }
+
+  #results-list {
+    font-size: 16px;
+    line-height: 1.8;
+  }
+
+  #restart-btn {
+    font-size: 16px;
+    padding: 12px 28px;
+  }
+
+  /* Pause */
+  #pause-content {
+    padding: 24px 28px;
+    border-radius: 16px;
+    margin: 16px;
+    min-width: auto;
+  }
+
+  #pause-logo {
+    max-width: 250px;
+  }
+
+  /* Credits overlay */
+  #credits-content {
+    padding: 28px 32px;
+    margin: 16px;
+    min-width: auto;
   }
 }

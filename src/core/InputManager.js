@@ -34,9 +34,9 @@ export class InputManager {
     if (!zone || !thumb) return;
 
     const baseRadius = 70;
-    const maxDist = 50;
+    const maxDist = 45;
     let joystickId = null;
-    const baseCenter = { x: 80, y: 80 };
+    const baseCenter = { x: 75, y: 75 };
 
     zone.addEventListener('touchstart', (e) => {
       e.preventDefault();
@@ -60,8 +60,8 @@ export class InputManager {
           joystickId = null;
           this._touchThrottle = 0;
           this._touchSteer = 0;
-          thumb.style.left = '52px';
-          thumb.style.top = '52px';
+          thumb.style.left = '49px';
+          thumb.style.top = '49px';
         }
       }
     };
@@ -95,8 +95,8 @@ export class InputManager {
     const nx = clamped * Math.cos(angle);
     const ny = clamped * Math.sin(angle);
 
-    thumb.style.left = (center.x - 28 + nx) + 'px';
-    thumb.style.top = (center.y - 28 + ny) + 'px';
+    thumb.style.left = (center.x - 26 + nx) + 'px';
+    thumb.style.top = (center.y - 26 + ny) + 'px';
 
     // Map to throttle/steer
     this._touchSteer = -(nx / maxDist);
