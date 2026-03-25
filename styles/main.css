@@ -644,6 +644,15 @@ body {
   font-weight: 600;
 }
 
+.credit-value a {
+  color: #00ccff;
+  text-decoration: none;
+}
+
+.credit-value a:hover {
+  text-decoration: underline;
+}
+
 #credits-close-btn {
   background: linear-gradient(135deg, #00ccff, #0088ff);
   border: none;
