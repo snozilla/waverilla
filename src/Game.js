@@ -662,20 +662,11 @@ export class Game {
 
   loop() {
     requestAnimationFrame(() => this.loop());
-
-    // Cap at 60fps on mobile to reduce heat/battery drain
-    if (IS_MOBILE) {
-      const now = performance.now();
-      if (now - (this._lastFrame || 0) < 16.67) return; // ~60fps
-      this._lastFrame = now;
-    }
-
     this.update();
   }
 
   start() {
     this.clock.start();
-    this._lastFrame = 0;
     this.loop();
   }
 }
