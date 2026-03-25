@@ -127,20 +127,25 @@ export class Game {
     const startOverlay = document.getElementById('start-overlay');
     this.startOverlay = startOverlay;
 
-    // Init audio + play intro on first click anywhere on the overlay
-    startOverlay.addEventListener('click', () => {
+    // Init audio on first interaction (click or touch) anywhere on the overlay
+    const initAudioOnce = () => {
       this.audio.init();
-    }, { once: true });
+      startOverlay.removeEventListener('click', initAudioOnce);
+      startOverlay.removeEventListener('touchstart', initAudioOnce);
+    };
+    startOverlay.addEventListener('click', initAudioOnce);
+    startOverlay.addEventListener('touchstart', initAudioOnce);
 
     // Bind track card clicks
     const trackCards = startOverlay.querySelectorAll('.track-card');
     trackCards.forEach(card => {
-      card.addEventListener('click', () => {
+      const startGame = () => {
         if (!this.initialized) return;
         const idx = parseInt(card.dataset.trackIndex, 10);
         this.selectTrack(idx);
         this.audio.skipIntro = true;
         this.audio.init();
+        this.audio.ensureResumed();
         this.audio.stopIntro();
         this.audio.restartEngine();
         this.audio.playTrackMusic(TRACKS[idx].music);
@@ -148,6 +153,11 @@ export class Game {
         this.hud.show();
         this.started = true;
         this.raceManager.startCountdown();
+      };
+      card.addEventListener('click', startGame);
+      card.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        startGame();
       });
     });
 
@@ -211,6 +221,7 @@ export class Game {
       this.audio.pauseAudio();
       this.hud.showPause();
     } else {
+      this.audio.ensureResumed();
       this.audio.resumeAudio();
       this.hud.hidePause();
     }

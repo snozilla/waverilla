@@ -15,6 +15,12 @@ export class AudioManager {
   init() {
     if (this.initialized) return;
     this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+    // iOS Safari requires explicit resume on user gesture
+    if (this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
+
     this.masterGain = this.ctx.createGain();
     this.masterGain.gain.value = 0.5;
     this.masterGain.connect(this.ctx.destination);
@@ -30,6 +36,13 @@ export class AudioManager {
     this.initialized = true;
     this.startEngine();
     if (!this.skipIntro) this.playIntro();
+  }
+
+  // Call on any user interaction to ensure audio works on iOS
+  ensureResumed() {
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
   }
 
   setSFXVolume(v) {
