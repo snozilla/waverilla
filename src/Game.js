@@ -20,7 +20,7 @@ import { BoostEffect } from './effects/BoostEffect.js';
 import { createSkybox } from './effects/Skybox.js';
 import { HUD } from './hud/HUD.js';
 import { AudioManager } from './audio/AudioManager.js';
-import { RACE, TRACKS, PICKUP } from './utils/constants.js';
+import { RACE, TRACKS, PICKUP, IS_MOBILE } from './utils/constants.js';
 
 export class Game {
   constructor() {
@@ -327,21 +327,24 @@ export class Game {
     const renderPass = new RenderPass(this.scene, this.chaseCamera.camera);
     this.composer.addPass(renderPass);
 
-    const bloomPass = new UnrealBloomPass(
-      new THREE.Vector2(window.innerWidth, window.innerHeight),
-      0.3,  // strength
-      0.4,  // radius
-      0.85  // threshold
-    );
-    this.composer.addPass(bloomPass);
+    // Skip bloom and FXAA on mobile — huge GPU savings, barely visible on small screens
+    if (!IS_MOBILE) {
+      const bloomPass = new UnrealBloomPass(
+        new THREE.Vector2(window.innerWidth, window.innerHeight),
+        0.3,  // strength
+        0.4,  // radius
+        0.85  // threshold
+      );
+      this.composer.addPass(bloomPass);
 
-    const fxaaPass = new ShaderPass(FXAAShader);
-    const pixelRatio = renderer.getPixelRatio();
-    fxaaPass.material.uniforms['resolution'].value.set(
-      1 / (window.innerWidth * pixelRatio),
-      1 / (window.innerHeight * pixelRatio)
-    );
-    this.composer.addPass(fxaaPass);
+      const fxaaPass = new ShaderPass(FXAAShader);
+      const pixelRatio = renderer.getPixelRatio();
+      fxaaPass.material.uniforms['resolution'].value.set(
+        1 / (window.innerWidth * pixelRatio),
+        1 / (window.innerHeight * pixelRatio)
+      );
+      this.composer.addPass(fxaaPass);
+    }
 
     window.addEventListener('resize', () => {
       this.composer.setSize(window.innerWidth, window.innerHeight);
@@ -659,11 +662,20 @@ export class Game {
 
   loop() {
     requestAnimationFrame(() => this.loop());
+
+    // Cap at 60fps on mobile to reduce heat/battery drain
+    if (IS_MOBILE) {
+      const now = performance.now();
+      if (now - (this._lastFrame || 0) < 16.67) return; // ~60fps
+      this._lastFrame = now;
+    }
+
     this.update();
   }
 
   start() {
     this.clock.start();
+    this._lastFrame = 0;
     this.loop();
   }
 }

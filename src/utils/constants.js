@@ -10,7 +10,9 @@ export const GERSTNER_WAVES = [
 
 // ── Water Grid ──
 export const WATER_SIZE = 800;
-export const WATER_SEGMENTS = 256;
+const _isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+export const WATER_SEGMENTS = _isMobile ? 128 : 256;
+export const IS_MOBILE = _isMobile;
 
 // ── Jet Ski Physics ──
 export const JETSKI = {

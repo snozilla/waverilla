@@ -1,15 +1,16 @@
 import * as THREE from 'three';
-import { COLORS } from '../utils/constants.js';
+import { COLORS, IS_MOBILE } from '../utils/constants.js';
 
 export class GameScene {
   constructor(canvas) {
     this.renderer = new THREE.WebGLRenderer({
       canvas,
-      antialias: true,
-      powerPreference: 'high-performance',
+      antialias: !IS_MOBILE,
+      powerPreference: IS_MOBILE ? 'default' : 'high-performance',
     });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // Mobile: cap at 1.5x to massively reduce GPU load (3x = 9x pixels)
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, IS_MOBILE ? 1.5 : 2));
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.0;
 
