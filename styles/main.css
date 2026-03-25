@@ -4,16 +4,19 @@
   box-sizing: border-box;
 }
 
-body {
+html, body {
   overflow: hidden;
   background: #000;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  height: 100%;
+  height: 100dvh;
 }
 
 #game-container {
   position: relative;
   width: 100vw;
-  height: 100vh;
+  height: 100%;
+  height: 100dvh;
 }
 
 #game-canvas {
@@ -826,9 +829,9 @@ body {
     padding: 2px 8px;
   }
 
-  /* === HUD: all info at top === */
+  /* === HUD: all info at top, below safe area === */
   #hud-speed {
-    top: 10px;
+    top: calc(10px + env(safe-area-inset-top, 0px));
     left: 10px;
     bottom: auto;
     padding: 4px 10px;
@@ -844,7 +847,7 @@ body {
   }
 
   #hud-lap {
-    top: 10px;
+    top: calc(10px + env(safe-area-inset-top, 0px));
     padding: 4px 10px;
     border-radius: 8px;
   }
@@ -855,7 +858,7 @@ body {
   }
 
   #hud-position {
-    top: 10px;
+    top: calc(10px + env(safe-area-inset-top, 0px));
     right: 10px;
     padding: 4px 10px;
     border-radius: 8px;
