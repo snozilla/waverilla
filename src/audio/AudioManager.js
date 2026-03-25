@@ -65,7 +65,7 @@ export class AudioManager {
   async playIntro() {
     if (!this.ctx) return;
     try {
-      const resp = await fetch('/src/audio/intro.mp3');
+      const resp = await fetch('src/audio/intro.mp3');
       const buf = await resp.arrayBuffer();
       this.introBuffer = await this.ctx.decodeAudioData(buf);
       this.introSource = this.ctx.createBufferSource();

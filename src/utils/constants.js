@@ -101,8 +101,8 @@ export const TRACKS = [
     name: 'Tropical Loop',
     difficulty: 'Easy',
     music: [
-      { url: '/src/audio/tropical-looop.mp3', volume: 0.8 },
-      { url: '/src/audio/tropical-loop-theme.mp3', volume: 0.5 },
+      { url: 'src/audio/tropical-looop.mp3', volume: 0.8 },
+      { url: 'src/audio/tropical-loop-theme.mp3', volume: 0.5 },
     ],
     waypoints: [
       { x: 0,    z: 0 },
@@ -126,8 +126,8 @@ export const TRACKS = [
     name: 'Shark Bay',
     difficulty: 'Medium',
     music: [
-      { url: '/src/audio/shark-bay-theme.mp3', volume: 0.8 },
-      { url: '/src/audio/shark-bay.mp3', volume: 1.0 },
+      { url: 'src/audio/shark-bay-theme.mp3', volume: 0.8 },
+      { url: 'src/audio/shark-bay.mp3', volume: 1.0 },
     ],
     waypoints: [
       { x: 0,    z: 0 },
@@ -152,8 +152,8 @@ export const TRACKS = [
     name: 'Typhoon Run',
     difficulty: 'Hard',
     music: [
-      { url: '/src/audio/typhoon-rnn-theme.mp3', volume: 0.8 },
-      { url: '/src/audio/typhoon-run.mp3', volume: 1.0 },
+      { url: 'src/audio/typhoon-rnn-theme.mp3', volume: 0.8 },
+      { url: 'src/audio/typhoon-run.mp3', volume: 1.0 },
     ],
     waypoints: [
       { x: 0,    z: 0 },
@@ -179,8 +179,8 @@ export const TRACKS = [
     name: "Dragon's Wake",
     difficulty: 'Expert',
     music: [
-      { url: '/src/audio/dragons-wake-theme.mp3', volume: 0.8 },
-      { url: '/src/audio/dragons-wake.mp3', volume: 1.0 },
+      { url: 'src/audio/dragons-wake-theme.mp3', volume: 0.8 },
+      { url: 'src/audio/dragons-wake.mp3', volume: 1.0 },
     ],
     waypoints: [
       { x: 0,    z: 0 },
