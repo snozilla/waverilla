@@ -140,17 +140,19 @@ export class Game {
     document.addEventListener('touchstart', () => {
       this.audio.ensureResumed();
     }, { passive: true });
+    document.addEventListener('click', () => {
+      this.audio.ensureResumed();
+    }, { passive: true });
 
     // Bind track card clicks
     const trackCards = startOverlay.querySelectorAll('.track-card');
     trackCards.forEach(card => {
-      const startGame = () => {
+      const startGame = async () => {
         if (!this.initialized) return;
         const idx = parseInt(card.dataset.trackIndex, 10);
         this.selectTrack(idx);
         this.audio.skipIntro = true;
-        this.audio.init();
-        this.audio.ensureResumed();
+        await this.audio.init();
         this.audio.stopIntro();
         this.audio.restartEngine();
         this.audio.playTrackMusic(TRACKS[idx].music);

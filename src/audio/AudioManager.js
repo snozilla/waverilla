@@ -10,17 +10,32 @@ export class AudioManager {
     this._sfxVolume = 1;
     this._musicVolume = 1;
     this._paused = false;
-    this._unlocked = false;
+    this._iosUnlocked = false;
   }
 
-  init() {
+  async init() {
     if (!this.ctx) {
       const AC = window.AudioContext || window.webkitAudioContext;
       this.ctx = new AC();
     }
 
-    // Always try to resume — iOS suspends aggressively
-    this._tryResume();
+    // iOS: unlock audio session (defeats silent/ringer switch)
+    this._unlockiOSAudioSession();
+
+    // Must await resume — iOS needs this to complete before any audio plays
+    if (this.ctx.state !== 'running') {
+      try { await this.ctx.resume(); } catch (e) {}
+    }
+
+    // Listen for iOS interruptions (tab switch, phone call, lock screen)
+    if (!this._stateChangeListening) {
+      this._stateChangeListening = true;
+      this.ctx.addEventListener('statechange', () => {
+        if (this.ctx.state === 'interrupted' || this.ctx.state === 'suspended') {
+          // Will re-resume on next user interaction
+        }
+      });
+    }
 
     if (this.initialized) return;
 
@@ -37,53 +52,34 @@ export class AudioManager {
     this.musicGain.connect(this.masterGain);
 
     this.initialized = true;
-
-    // Unlock iOS audio by playing silent buffer + oscillator
-    this._unlockAudio();
-
     this.startEngine();
     if (!this.skipIntro) this.playIntro();
   }
 
-  _tryResume() {
+  // Play a silent MP3 via HTML Audio to unlock iOS audio session
+  // This defeats the silent/ringer switch — crucial for iPhone
+  _unlockiOSAudioSession() {
+    if (this._iosUnlocked) return;
+    try {
+      const audio = new Audio('src/audio/silence.mp3');
+      audio.volume = 0.01;
+      audio.playsInline = true;
+      const p = audio.play();
+      if (p && p.then) {
+        p.then(() => {
+          this._iosUnlocked = true;
+          // Clean up after short play
+          setTimeout(() => { audio.pause(); audio.remove?.(); }, 600);
+        }).catch(() => {});
+      }
+    } catch (e) {}
+  }
+
+  async ensureResumed() {
     if (!this.ctx) return;
-    const state = this.ctx.state;
-    if (state === 'suspended' || state === 'interrupted') {
-      try { this.ctx.resume(); } catch (e) {}
-    }
-  }
-
-  _unlockAudio() {
-    if (this._unlocked || !this.ctx) return;
-
-    // Method 1: silent buffer
-    try {
-      const buf = this.ctx.createBuffer(1, 1, this.ctx.sampleRate || 22050);
-      const src = this.ctx.createBufferSource();
-      src.buffer = buf;
-      src.connect(this.ctx.destination);
-      src.start(0);
-      if (src.stop) src.stop(this.ctx.currentTime + 0.001);
-    } catch (e) {}
-
-    // Method 2: silent oscillator (backup for older iOS)
-    try {
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      gain.gain.value = 0;
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start(0);
-      osc.stop(this.ctx.currentTime + 0.001);
-    } catch (e) {}
-
-    this._unlocked = true;
-  }
-
-  ensureResumed() {
-    this._tryResume();
-    if (this.ctx && !this._unlocked) {
-      this._unlockAudio();
+    this._unlockiOSAudioSession();
+    if (this.ctx.state !== 'running') {
+      try { await this.ctx.resume(); } catch (e) {}
     }
   }
 
@@ -112,13 +108,12 @@ export class AudioManager {
   resumeAudio() {
     if (!this.ctx || !this._paused) return;
     this._paused = false;
-    this._tryResume();
+    this.ensureResumed();
     const t = this.ctx.currentTime;
     this.sfxGain.gain.setTargetAtTime(this._sfxVolume, t, 0.05);
     this.musicGain.gain.setTargetAtTime(this._musicVolume, t, 0.05);
   }
 
-  // Decode audio with callback API for iOS compatibility
   _decode(arrayBuffer) {
     return new Promise((resolve, reject) => {
       this.ctx.decodeAudioData(
@@ -135,6 +130,10 @@ export class AudioManager {
       const resp = await fetch('src/audio/intro.mp3');
       const buf = await resp.arrayBuffer();
       this.introBuffer = await this._decode(buf);
+      // Ensure context is running before playing
+      if (this.ctx.state !== 'running') {
+        try { await this.ctx.resume(); } catch (e) {}
+      }
       this.introSource = this.ctx.createBufferSource();
       this.introSource.buffer = this.introBuffer;
       this.introSource.loop = false;
@@ -150,7 +149,7 @@ export class AudioManager {
 
   async playTrackMusic(music) {
     if (!this.ctx || !music) return;
-    this._tryResume();
+    await this.ensureResumed();
     this.stopTrackMusic();
     const tracks = Array.isArray(music) ? music : [{ url: music, volume: 0.3 }];
     this.trackSources = [];
@@ -200,7 +199,6 @@ export class AudioManager {
     if (!this.ctx) return;
     this.engineStopped = false;
 
-    // Engine: detuned sawtooth oscillator
     this.engineOsc = this.ctx.createOscillator();
     this.engineOsc.type = 'sawtooth';
     this.engineOsc.frequency.value = 60;
@@ -208,7 +206,6 @@ export class AudioManager {
     this.engineGain = this.ctx.createGain();
     this.engineGain.gain.value = 0.08;
 
-    // Low-pass filter for engine rumble
     this.engineFilter = this.ctx.createBiquadFilter();
     this.engineFilter.type = 'lowpass';
     this.engineFilter.frequency.value = 400;
@@ -219,7 +216,6 @@ export class AudioManager {
     this.engineGain.connect(this.sfxGain);
     this.engineOsc.start(0);
 
-    // Second harmonic
     this.engineOsc2 = this.ctx.createOscillator();
     this.engineOsc2.type = 'square';
     this.engineOsc2.frequency.value = 120;
@@ -234,7 +230,7 @@ export class AudioManager {
 
   restartEngine() {
     if (!this.ctx || !this.engineGain) return;
-    this._tryResume();
+    this.ensureResumed();
     this.engineStopped = false;
     const t = this.ctx.currentTime;
     this.engineGain.gain.linearRampToValueAtTime(0.08, t + 0.3);
@@ -269,8 +265,7 @@ export class AudioManager {
   }
 
   playTone(freq, duration, type = 'sine', volume = 0.15) {
-    if (!this.ctx) return;
-    this._tryResume();
+    if (!this.ctx || this.ctx.state !== 'running') return;
     const osc = this.ctx.createOscillator();
     osc.type = type;
     osc.frequency.value = freq;
@@ -289,14 +284,12 @@ export class AudioManager {
     if (number > 0) {
       this.playTone(440, 0.2, 'sine', 0.2);
     } else {
-      // GO!
       this.playTone(880, 0.4, 'sine', 0.3);
     }
   }
 
   playSplash() {
-    if (!this.ctx) return;
-    // White noise burst
+    if (!this.ctx || this.ctx.state !== 'running') return;
     const buffer = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.15, this.ctx.sampleRate);
     const data = buffer.getChannelData(0);
     for (let i = 0; i < data.length; i++) {
@@ -335,15 +328,12 @@ export class AudioManager {
   }
 
   playPickup() {
-    // Two ascending chime tones
     this.playTone(880, 0.12, 'sine', 0.18);
     setTimeout(() => this.playTone(1320, 0.15, 'sine', 0.15), 80);
   }
 
   playCollision() {
-    if (!this.ctx) return;
-    this._tryResume();
-    // Low frequency impact burst
+    if (!this.ctx || this.ctx.state !== 'running') return;
     const osc = this.ctx.createOscillator();
     osc.type = 'sawtooth';
     osc.frequency.value = 80;
@@ -353,7 +343,6 @@ export class AudioManager {
     gain.gain.value = 0.25;
     gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.3);
 
-    // Noise layer for crunch
     const buffer = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.15, this.ctx.sampleRate);
     const data = buffer.getChannelData(0);
     for (let i = 0; i < data.length; i++) {
