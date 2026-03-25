@@ -524,6 +524,7 @@ html, body {
   text-align: center;
   color: #fff;
   padding: 20px 16px 40px;
+  padding-top: calc(20px + env(safe-area-inset-top, 0px));
 }
 
 #game-logo {
@@ -852,8 +853,12 @@ html, body {
   }
 
   /* Start screen */
+  #start-content {
+    padding-top: calc(50px + env(safe-area-inset-top, 0px));
+  }
+
   #game-logo {
-    max-width: 340px;
+    max-width: 260px;
   }
 
   #start-content .select-prompt {
